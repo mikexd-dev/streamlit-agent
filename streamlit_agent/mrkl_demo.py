@@ -1,35 +1,23 @@
-from pathlib import Path
 import os
 import asyncio
 import openai
 import time
-from dotenv import find_dotenv, load_dotenv
+from dotenv import load_dotenv
 import streamlit as st
-from langchain.chat_models import ChatOpenAI
 from langchain import SQLDatabase
-from langchain.agents import AgentType
-from langchain.agents import initialize_agent, Tool
+from langchain.agents import Tool, initialize_agent, AgentType
 from langchain.callbacks import StreamlitCallbackHandler
-from langchain.chains import LLMMathChain, SQLDatabaseChain
+from langchain.chains import LLMMathChain, SQLDatabaseChain, APIChain
 from langchain.llms import OpenAI
 from langchain.utilities import DuckDuckGoSearchAPIWrapper
 
-from streamlit_agent.callbacks.capturing_callback_handler import playback_callbacks
-from langchain.memory import ConversationBufferWindowMemory
 from langchain.memory import ConversationBufferMemory
 from langchain.agents import (
     Tool,
     AgentExecutor,
-    LLMSingleActionAgent,
-    AgentOutputParser,
 )
-from langchain.prompts import MessagesPlaceholder
-from langchain.prompts import StringPromptTemplate
-from langchain import OpenAI, SerpAPIWrapper, LLMChain
-from typing import List, Union
-from langchain.schema import AgentAction, AgentFinish, OutputParserException
-import re
-from langchain.tools import BaseTool, StructuredTool, Tool, tool
+from langchain import OpenAI, LLMChain
+from langchain.tools import Tool
 from langchain.agents import ZeroShotAgent, Tool, AgentExecutor
 from langchain import PromptTemplate
 
@@ -37,8 +25,16 @@ from langchain import PromptTemplate
 from langchain.agents import ZeroShotAgent, Tool, AgentExecutor
 from langchain.memory import ConversationBufferMemory, ReadOnlySharedMemory
 from langchain import OpenAI, LLMChain, PromptTemplate
-from langchain.utilities import GoogleSearchAPIWrapper
 from datetime import datetime, timedelta, timezone
+from openai_functions import shopify_function_calling, nft_function_calling
+
+from langchain.chains.openai_functions import (
+    create_openai_fn_chain,
+)
+from langchain.chat_models import ChatOpenAI
+from langchain.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
+from langchain.schema import HumanMessage, SystemMessage
+
 
 load_dotenv()
 dev_db_pw = os.getenv("DEV_DB_PW")
@@ -48,6 +44,8 @@ prod_db_pw = os.getenv("PROD_DB_PW")
 prod_db_uri = os.getenv("PROD_DB_URI")
 stage_db_uri = os.getenv("STAGE_DB_URI")
 dev_db_uri = os.getenv("DEV_DB_URI")
+
+SHOPIFY_ACCESS_KEY = os.getenv("SHOPIFY_ACCESS_KEY")
 
 
 def boot():
@@ -101,27 +99,68 @@ def get_conversation_chain():
     )
     db_chain = SQLDatabaseChain.from_llm(llm, db)
 
+    # openai function calling - shopify
+    prompt_msgs = [
+        SystemMessage(
+            content="You are a world class REST API developer who has access to all shopify apis"
+        ),
+        HumanMessage(
+            content="Make calls to the relevant function to fetch data in the following input:"
+        ),
+        HumanMessagePromptTemplate.from_template("{input}"),
+        HumanMessage(content="Tips: Make sure to answer in the correct format"),
+    ]
+    prompt = ChatPromptTemplate(messages=prompt_msgs)
+    llm1 = ChatOpenAI(model="gpt-3.5-turbo-0613", temperature=0)
+    # shopify_chain = create_openai_fn_chain(
+    #     [get_all_abandoned_checkouts], llm1, prompt, verbose=True, memory=readonlymemory
+    # )
+
+    # implicit_docs = """
+    # Pitchfork has an API with a sample endpoint at https://pitchfork.com/api/v2/search/?genre=experimental&genre=global&genre=jazz&genre=metal&genre=pop&genre=rap&genre=rock&types=reviews&sort=publishdate%20desc%2Cposition%20asc&size=5&start=0&rating_from=0.0
+    # """
+
+    # implicit_chain = APIChain.from_llm_and_api_docs(llm, implicit_docs, verbose=True)
+
+    implicit_docs = """
+    Shopify has an API with a sample endpoint for abandoned checkout orders: http://localhost:3000/shopify/checkouts?limit=1
+
+    Shopify has an API with a sample endpoint for a count of checkouts from past 90 days orders: http://localhost:3000/shopify/checkouts?created_at_max=2013-10-12T07%3A05%3A27-02%3A00
+    """
+
+    implicit_chain = APIChain.from_llm_and_api_docs(llm, implicit_docs, verbose=True)
+
     # Setup Tools
     tools = [
         Tool(
-            name="Search",
+            name="search-internet",
             func=search.run,
             description="useful for when you need to answer questions about current events. You should ask targeted questions",
         ),
         Tool(
-            name="Authentick_DB",
+            name="authentick-database",
             func=db_chain.run,
-            description="useful for when you need to answer questions about Authentick. Input should be in the form of a question containing full context",
+            description="useful for when you need to answer questions about Authentick. Input should be in the form of a question containing full context. All queries should be read only. No POST, UPDATE, DELETE queries allowed. Trigger this only when authentick is mentioned in the conversation",
         ),
         Tool(
-            name="Calculator",
+            name="calculator",
             func=llm_math_chain.run,
             description="useful for when you need to answer questions about math",
         ),
+        # Tool(
+        #     name="Summary",
+        #     func=summary_chain.run,
+        #     description="useful for when you summarize a conversation. The input to this tool should be a string, representing who will read this summary.",
+        # ),
         Tool(
-            name="Summary",
-            func=summary_chain.run,
-            description="useful for when you summarize a conversation. The input to this tool should be a string, representing who will read this summary.",
+            name="shopify",
+            func=shopify_function_calling,
+            description="useful for when you need to answer questions about admin functionalities in shopify store such as abandoned_orders. Trigger this only when shopify is mentioned in the conversation.",
+        ),
+        Tool(
+            name="nft-realtime-data",
+            func=nft_function_calling,
+            description="useful for when you need to answer questions about realtime nft information such as top selling nfts, token transfers history, token prices, ",
         ),
     ]
 
@@ -147,13 +186,21 @@ def get_conversation_chain():
     # memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 
     # Initialize agent
-    llm_chain = LLMChain(llm=llm, prompt=prompt, verbose=True)
-    agent = ZeroShotAgent(llm_chain=llm_chain, tools=tools, verbose=True)
-
-    agent_chain = AgentExecutor.from_agent_and_tools(
-        agent=agent, tools=tools, verbose=True, memory=memory
+    mrkl_chain = initialize_agent(
+        tools,
+        llm1,
+        agent=AgentType.OPENAI_MULTI_FUNCTIONS,
+        verbose=True,
+        memory=memory,
     )
-    return agent_chain
+    # llm_chain = LLMChain(llm=llm, prompt=prompt, verbose=True)
+    # agent = ZeroShotAgent(llm_chain=llm_chain, tools=tools, verbose=True)
+
+    # agent_chain = AgentExecutor.from_agent_and_tools(
+    #     agent=agent, tools=tools, verbose=True, memory=memory
+    # )
+
+    return mrkl_chain
 
 
 def ask(input: str, callback_func) -> str:
