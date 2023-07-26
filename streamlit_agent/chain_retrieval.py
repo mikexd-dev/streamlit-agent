@@ -54,14 +54,14 @@ def get_conversation_chain():
     # Setup Chains
     llm_math_chain = LLMMathChain.from_llm(llm, verbose=True, memory=readonlymemory)
     db_chain = SQLDatabaseChain.from_llm(llm, db, verbose=True, memory=readonlymemory)
-    search_chain = SerpAPIWrapper()
+    search_chain = SerpAPIWrapper(serpapi_api_key=os.getenv("SERPAPI_API_KEY"))
 
     # Setup Tools
     tools = [
         Tool(
             name="search-internet",
             func=search_chain.run,
-            description="useful for when you need to answer questions about current events. You should ask targeted questions",
+            description="useful for when you need to answer questions about current events. You should ask targeted questions. Only use this tool as a last resort when no other tools are helpful",
         ),
         Tool(
             name="authentick-database",
