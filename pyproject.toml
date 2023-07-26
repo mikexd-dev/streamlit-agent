@@ -24,7 +24,6 @@ streamlit-supabase-auth = "1.0.2"
 supabase="1.0.3"
 storage3="0.5.3"
 st-annotated-text="4.0.0"
-duckduckgo-search="3.7.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"
