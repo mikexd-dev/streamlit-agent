@@ -2,21 +2,10 @@ import openai
 import json
 import os
 from dotenv import load_dotenv
-import shopify as shopify
-import nft_collections as nft_collections
-import tokens as tokens
-import transfers as transfers
-from pydantic import BaseModel, Field
-from typing import Optional
-
-from langchain.chains.openai_functions import (
-    create_openai_fn_chain,
-    create_structured_output_chain,
-)
-from langchain.chat_models import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
-from langchain.schema import HumanMessage, SystemMessage
-
+import functions.shopify as shopify
+import functions.nft_collections as nft_collections
+import functions.tokens as tokens
+import functions.transfers as transfers
 
 load_dotenv()
 

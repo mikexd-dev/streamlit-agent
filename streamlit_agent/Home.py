@@ -1,20 +1,20 @@
+from dotenv import load_dotenv
 import streamlit as st
 import os
 from streamlit_supabase_auth import login_form, logout_button
 from supabase import StorageException
 from storage3 import create_client
-from streamlit_js_eval import streamlit_js_eval
 
-from file_uploader import init as file_uploader_init
-from chat_ui import init as chat_ui_init
-from generate_embeddings import load_vs
+from chat_ui import init_ui as chat_ui_init
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+# from generate_embeddings import load_vs
+load_dotenv()
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
-st.set_page_config(page_title="Eiffel QA", page_icon=":robot:")
-st.header("Eiffel Q&A")
-st.sidebar.title("Eiffel Copilot")
+st.set_page_config(page_title="Ticky AI", page_icon=":robot:")
+st.title("✅ Authentick Copilot V1")
+st.sidebar.title("Authentick Copilot")
 
 
 def boot():
@@ -61,9 +61,9 @@ def main():
     if st.session_state.namespace is None:
         return
 
-    st.session_state.vs = load_vs(st.session_state.namespace)
+    # st.session_state.vs = load_vs(st.session_state.namespace)
 
-    file_uploader_init()
+    # file_uploader_init()
     chat_ui_init()
 
 
