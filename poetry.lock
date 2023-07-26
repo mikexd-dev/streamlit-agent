@@ -1039,6 +1039,19 @@ files = [
 gitdb = ">=4.0.1,<5"
 
 [[package]]
+name = "google-search-results"
+version = "2.4.2"
+description = "Scrape and search localized results from Google, Bing, Baidu, Yahoo, Yandex, Ebay, Homedepot, youtube at scale using SerpApi.com"
+optional = false
+python-versions = ">=3.5"
+files = [
+    {file = "google_search_results-2.4.2.tar.gz", hash = "sha256:603a30ecae2af8e600b22635757a6df275dad4b934f975e67878ccd640b78245"},
+]
+
+[package.dependencies]
+requests = "*"
+
+[[package]]
 name = "gotrue"
 version = "1.0.2"
 description = "Python Client Library for GoTrue"
@@ -4877,4 +4890,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "281ae6dc2c2c4db665924bd768bc3cbe5cae099592b6d7f88512203e7c4bcade"
+content-hash = "608d155b272e5ebac98e1364b6676fcaac189f925635ada5788e7dfc1f64df23"

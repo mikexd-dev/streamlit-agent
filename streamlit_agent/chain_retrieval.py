@@ -41,7 +41,7 @@ FUNCTION_CALL_MODEL = "gpt-3.5-turbo-0613"
 def get_conversation_chain():
     # Setup LLM
     llm = OpenAI(temperature=0, streaming=True, model_name=SIXTEEEN_K_MODEL)
-    llm1 = ChatOpenAI(model=FUNCTION_CALL_MODEL, temperature=0)
+    llm1 = ChatOpenAI(model=FUNCTION_CALL_MODEL, temperature=0, streaming=True)
 
     # Setup Memory
     memory = ConversationBufferMemory(memory_key="chat_history")
@@ -106,7 +106,7 @@ def get_conversation_chain():
     mrkl_chain = initialize_agent(
         tools,
         llm1,
-        agent=AgentType.OPENAI_MULTI_FUNCTIONS,
+        agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
         verbose=True,
         memory=memory,
     )
