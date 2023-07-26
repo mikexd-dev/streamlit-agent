@@ -7,6 +7,7 @@ from langchain.chat_models import ChatOpenAI
 
 # Utils
 from langchain.utilities import DuckDuckGoSearchAPIWrapper
+from langchain import SerpAPIWrapper
 
 # DB
 from langchain import SQLDatabase
@@ -53,12 +54,13 @@ def get_conversation_chain():
     # Setup Chains
     llm_math_chain = LLMMathChain.from_llm(llm, verbose=True, memory=readonlymemory)
     db_chain = SQLDatabaseChain.from_llm(llm, db, verbose=True, memory=readonlymemory)
+    search_chain = SerpAPIWrapper()
 
     # Setup Tools
     tools = [
         Tool(
             name="search-internet",
-            func=search.run,
+            func=search_chain.run,
             description="useful for when you need to answer questions about current events. You should ask targeted questions",
         ),
         Tool(
