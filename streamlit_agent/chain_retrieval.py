@@ -32,6 +32,12 @@ from openai_functions import shopify_function_calling, nft_function_calling
 # Agent
 from langchain.agents import Tool, initialize_agent, AgentType, ZeroShotAgent
 
+
+import faiss
+from langchain import OpenAI
+from langchain.chains import VectorDBQAWithSourcesChain
+import pickle
+
 load_dotenv()
 PROD_DB_URI = os.getenv("PROD_DB_URI")
 SIXTEEEN_K_MODEL = "gpt-3.5-turbo-16k"
@@ -56,8 +62,24 @@ def get_conversation_chain():
     db_chain = SQLDatabaseChain.from_llm(llm, db, verbose=True, memory=readonlymemory)
     search_chain = SerpAPIWrapper(serpapi_api_key=os.getenv("SERPAPI_API_KEY"))
 
+    # Load the vecor chain
+    # index = faiss.read_index("docs.index")
+    # loaded_model = pickle.load(open("faiss_store.pkl", "rb"))
+    # with open("./faiss_store.pkl", "rb") as f:
+    #     store = pickle.load(f)
+
+    # store.index = index
+    # vector_chain = VectorDBQAWithSourcesChain.from_llm(
+    #     llm=OpenAI(temperature=0), vectorstore=loaded_model, memory=readonlymemory
+    # )
+
     # Setup Tools
     tools = [
+        # Tool(
+        #     name="qa",
+        #     func=vector_chain.run,
+        #     description="useful when you need to answer qualitative questions about Authentick. Input should be in the form of a question containing full context. Trigger this only when authentick is mentioned in the conversation",
+        # ),
         Tool(
             name="search-internet",
             func=search_chain.run,
