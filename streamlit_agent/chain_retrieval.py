@@ -6,7 +6,7 @@ from langchain import OpenAI
 from langchain.chat_models import ChatOpenAI
 
 # Utils
-from langchain.utilities import DuckDuckGoSearchAPIWrapper
+# from langchain.utilities import DuckDuckGoSearchAPIWrapper
 from langchain import SerpAPIWrapper
 
 # DB
@@ -35,14 +35,34 @@ from langchain.agents import Tool, initialize_agent, AgentType, ZeroShotAgent
 
 # import faiss
 from langchain import OpenAI
-from langchain.chains import VectorDBQAWithSourcesChain
+from langchain.chains import VectorDBQAWithSourcesChain, RetrievalQAWithSourcesChain
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.vectorstores import Pinecone
 
-# import pickle
+import pinecone
+import os
+import asyncio
+from langchain.chains import ConversationalRetrievalChain
 
 load_dotenv()
 PROD_DB_URI = os.getenv("PROD_DB_URI")
 SIXTEEEN_K_MODEL = "gpt-3.5-turbo-16k"
 FUNCTION_CALL_MODEL = "gpt-3.5-turbo-0613"
+
+OPENAPI_API_KEY = os.environ.get("OPENAPI_API_KEY")
+PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY")
+PINECONE_API_ENV = os.environ.get("PINECONE_API_ENV")
+PINECONE_INDEX = os.environ.get("PINECONE_INDEX")
+PINECONE_NAMESPACE = "authentick-notion"
+
+
+def load_vs():
+    embeddings = OpenAIEmbeddings()
+    pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_API_ENV)
+    index_name = PINECONE_INDEX
+    vs = Pinecone.from_existing_index(index_name, embeddings, namespace=PINECONE_NAMESPACE)
+    return vs
 
 
 def get_conversation_chain():
@@ -55,7 +75,7 @@ def get_conversation_chain():
     readonlymemory = ReadOnlySharedMemory(memory=memory)
 
     # Prepare tools: SEARCH, MATH, DB
-    search = DuckDuckGoSearchAPIWrapper()
+    # search = DuckDuckGoSearchAPIWrapper()
     db = SQLDatabase.from_uri(PROD_DB_URI)
 
     # Setup Chains
@@ -73,14 +93,28 @@ def get_conversation_chain():
     # vector_chain = VectorDBQAWithSourcesChain.from_llm(
     #     llm=OpenAI(temperature=0), vectorstore=loaded_model, memory=readonlymemory
     # )
+    vs = load_vs()
+    retriever = vs.as_retriever(search_kwargs={"namespace": PINECONE_NAMESPACE})
+    # vector_chain = RetrievalQAWithSourcesChain.from_chain_type(
+    #     llm=llm, chain_type="stuff", retriever=retriever
+    # )
+
+    vector_chain = RetrievalQAWithSourcesChain.from_chain_type(
+        llm=llm, chain_type="stuff", retriever=retriever
+    )
 
     # Setup Tools
     tools = [
-        # Tool(
-        #     name="qa",
-        #     func=vector_chain.run,
-        #     description="useful when you need to answer qualitative questions about Authentick. Input should be in the form of a question containing full context. Trigger this only when authentick is mentioned in the conversation",
-        # ),
+        Tool(
+            name="search-internet",
+            func=search_chain.run,
+            description="useful for when you need to answer questions about current events. You should ask targeted questions. Only use this tool as a last resort when no other tools are helpful",
+        ),
+        Tool(
+            name="authentick-notion",
+            func=vector_chain,
+            description="useful when you need to answer qualitative questions about Authentick. Input should be in the form of a question containing full context. Trigger this only when notion is mentioned in the conversation",
+        ),
         Tool(
             name="search-internet",
             func=search_chain.run,
