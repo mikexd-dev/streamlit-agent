@@ -33,10 +33,11 @@ from openai_functions import shopify_function_calling, nft_function_calling
 from langchain.agents import Tool, initialize_agent, AgentType, ZeroShotAgent
 
 
-import faiss
+# import faiss
 from langchain import OpenAI
 from langchain.chains import VectorDBQAWithSourcesChain
-import pickle
+
+# import pickle
 
 load_dotenv()
 PROD_DB_URI = os.getenv("PROD_DB_URI")
